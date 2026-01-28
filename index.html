@@ -10,6 +10,68 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%234A90A4' width='100' height='100' rx='20'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white'>📦</text></svg>">
     <title>주문 관리 대시보드</title>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js';
+
+        // Firebase 설정
+        const firebaseConfig = {
+            apiKey: "AIzaSyDkeGO9VK32PwjffHIW7P7RS1Ia1McfyNY",
+            authDomain: "bebecook-9dc95.firebaseapp.com",
+            projectId: "bebecook-9dc95",
+            storageBucket: "bebecook-9dc95.firebasestorage.app",
+            messagingSenderId: "152009472986",
+            appId: "1:152009472986:web:d096e90919d8ddee7b9ee3",
+            measurementId: "G-29QNZSZZWM"
+        };
+
+        // Firebase 초기화
+        const app = initializeApp(firebaseConfig);
+        const messaging = getMessaging(app);
+
+        // FCM 토큰 가져오기 함수를 전역으로 노출
+        window.getFCMToken = async function() {
+            try {
+                const token = await getToken(messaging, {
+                    vapidKey: 'YOUR_VAPID_KEY' // Firebase Console에서 생성 필요
+                });
+                if (token) {
+                    console.log('FCM Token:', token);
+                    localStorage.setItem('fcm_token', token);
+                    return token;
+                } else {
+                    console.log('FCM 토큰을 가져올 수 없습니다.');
+                    return null;
+                }
+            } catch (err) {
+                console.log('FCM 토큰 오류:', err);
+                return null;
+            }
+        };
+
+        // 포그라운드 메시지 수신
+        onMessage(messaging, (payload) => {
+            console.log('포그라운드 메시지 수신:', payload);
+            const { title, body } = payload.notification;
+
+            // 브라우저 알림 표시
+            if (Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: body,
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23FF8A5B" width="100" height="100" rx="20"/><text x="50" y="65" font-size="50" text-anchor="middle" fill="white">📦</text></svg>'
+                });
+            }
+
+            // 인앱 토스트도 표시
+            if (window.showToast) {
+                window.showToast(`${title}: ${body}`);
+            }
+        });
+
+        console.log('Firebase 초기화 완료');
+    </script>
     <style>
         * {
             margin: 0;
@@ -896,10 +958,18 @@
 
         // 서비스 워커 등록
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('서비스 워커 등록 성공:', reg.scope))
-                    .catch(err => console.log('서비스 워커 등록 실패:', err));
+            window.addEventListener('load', async () => {
+                try {
+                    // PWA 캐싱 서비스 워커
+                    const swReg = await navigator.serviceWorker.register('sw.js');
+                    console.log('캐싱 서비스 워커 등록 성공:', swReg.scope);
+
+                    // Firebase Messaging 서비스 워커
+                    const fcmReg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+                    console.log('FCM 서비스 워커 등록 성공:', fcmReg.scope);
+                } catch (err) {
+                    console.log('서비스 워커 등록 실패:', err);
+                }
             });
         }
 
