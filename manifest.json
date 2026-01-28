@@ -4,8 +4,8 @@
     "description": "베베쿡 주문 조회를 간편하게 관리하는 앱",
     "start_url": "./index.html",
     "display": "standalone",
-    "background_color": "#f5f7fa",
-    "theme_color": "#4A90A4",
+    "background_color": "#FDF7ED",
+    "theme_color": "#FF8A5B",
     "orientation": "portrait",
     "icons": [
         {
