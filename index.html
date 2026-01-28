@@ -299,6 +299,62 @@
             border: none;
         }
 
+        .modal-actions-secondary {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            padding-top: 16px;
+            border-top: 1px solid #e8ecef;
+        }
+
+        .modal-actions-secondary button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            min-height: 46px;
+            border: none;
+        }
+
+        .btn-complete {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .btn-complete.is-completed {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .btn-delete-modal {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        /* 완료된 카드 */
+        .order-card.completed {
+            opacity: 0.6;
+            background: #f8fafc;
+        }
+
+        .order-card.completed .order-number {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+
+        .completed-badge {
+            display: inline-block;
+            background: #16a34a;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
         /* 빈 상태 */
         .empty-state {
             text-align: center;
@@ -434,6 +490,10 @@
                 <button class="btn-cancel" onclick="closeEditModal()">취소</button>
                 <button class="btn-save" onclick="saveEdit()">저장</button>
             </div>
+            <div class="modal-actions-secondary">
+                <button class="btn-complete" id="btnComplete" onclick="toggleComplete()">완료 처리</button>
+                <button class="btn-delete-modal" onclick="deleteOrder()">삭제</button>
+            </div>
         </div>
     </div>
 
@@ -498,14 +558,43 @@
             showToast('주문이 추가되었습니다!');
         }
 
-        // 주문 삭제
-        function deleteOrder(id) {
+        // 주문 삭제 (모달에서)
+        function deleteOrder() {
+            if (!editingOrderId) return;
             if (!confirm('이 주문을 삭제하시겠습니까?')) return;
 
-            const orders = getOrders().filter(order => order.id !== id);
+            const orders = getOrders().filter(order => order.id !== editingOrderId);
             saveOrders(orders);
+            closeEditModal();
             renderOrders();
             showToast('주문이 삭제되었습니다.');
+        }
+
+        // 완료 토글
+        function toggleComplete() {
+            if (!editingOrderId) return;
+
+            const orders = getOrders();
+            const index = orders.findIndex(o => o.id === editingOrderId);
+            if (index !== -1) {
+                orders[index].completed = !orders[index].completed;
+                saveOrders(orders);
+                updateCompleteButton(orders[index].completed);
+                renderOrders();
+                showToast(orders[index].completed ? '완료 처리되었습니다.' : '완료 취소되었습니다.');
+            }
+        }
+
+        // 완료 버튼 텍스트 업데이트
+        function updateCompleteButton(isCompleted) {
+            const btn = document.getElementById('btnComplete');
+            if (isCompleted) {
+                btn.textContent = '완료 취소';
+                btn.classList.add('is-completed');
+            } else {
+                btn.textContent = '완료 처리';
+                btn.classList.remove('is-completed');
+            }
         }
 
         // 수정 모달
@@ -519,6 +608,7 @@
             editingOrderId = id;
             document.getElementById('editOrderNumber').value = order.orderNumber;
             document.getElementById('editMemo').value = order.memo || '';
+            updateCompleteButton(order.completed || false);
             document.getElementById('editModal').classList.add('show');
         }
 
@@ -607,9 +697,9 @@
             listCount.textContent = orders.length;
 
             orderList.innerHTML = orders.map(order => `
-                <div class="order-card">
+                <div class="order-card ${order.completed ? 'completed' : ''}">
                     <div class="order-info">
-                        <div class="order-date">📅 ${parseOrderDate(order.orderNumber)} 주문</div>
+                        <div class="order-date">📅 ${parseOrderDate(order.orderNumber)} 주문 ${order.completed ? '<span class="completed-badge">완료</span>' : ''}</div>
                         <div class="order-number">📝 ${escapeHtml(order.orderNumber)}</div>
                         ${order.memo ? `<div class="order-memo">💬 ${escapeHtml(order.memo)}</div>` : ''}
                     </div>
@@ -619,9 +709,6 @@
                         </button>
                         <button class="btn-edit" onclick="openEditModal(${order.id})">
                             수정
-                        </button>
-                        <button class="btn-delete" onclick="deleteOrder(${order.id})">
-                            삭제
                         </button>
                     </div>
                 </div>
