@@ -378,20 +378,26 @@
             showToast('주문이 삭제되었습니다.');
         }
 
-        // 조회하기 (URL 파라미터로 전달 + 새 탭 열기)
+        // 조회하기 (클립보드 복사 + 새 탭 열기)
         async function lookupOrder(recipient, orderNumber) {
-            // URL 쿼리 파라미터로 수령인명과 주문번호 전달 시도
-            const baseUrl = 'https://www.bebecook.com/page/guest/order/signin';
-            const params = new URLSearchParams({
-                name: recipient,
-                orderNo: orderNumber,
-                receiverName: recipient,
-                orderNumber: orderNumber
-            });
-            const urlWithParams = `${baseUrl}?${params.toString()}`;
+            const copyText = `${recipient}\n${orderNumber}`;
 
-            window.open(urlWithParams, '_blank');
-            showToast(`수령인: ${recipient}\n주문번호: ${orderNumber}\n\n자동 입력이 안 되면 직접 입력해주세요.`);
+            try {
+                await navigator.clipboard.writeText(copyText);
+            } catch (err) {
+                // 클립보드 API 실패 시 대체 방법
+                const textArea = document.createElement('textarea');
+                textArea.value = copyText;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            }
+
+            window.open('https://www.bebecook.com/page/guest/order/signin', '_blank');
+            showToast(`복사됨!\n수령인: ${recipient}\n주문번호: ${orderNumber}\n\n각 필드에 붙여넣기 하세요.`);
         }
 
         // 주문 목록 렌더링
