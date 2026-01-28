@@ -15,6 +15,8 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js';
+        import { getFirestore, doc, setDoc, collection, getDocs, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
         // Firebase 설정
         const firebaseConfig = {
@@ -30,8 +32,126 @@
         // Firebase 초기화
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
 
-        // FCM 토큰 가져오기 함수를 전역으로 노출
+        // 현재 사용자 ID
+        let currentUserId = null;
+
+        // 익명 로그인
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUserId = user.uid;
+                console.log('로그인 완료:', currentUserId);
+                window.firebaseUserId = currentUserId;
+
+                // Firestore에서 주문 동기화
+                await syncFromFirestore();
+
+                // localStorage 데이터를 Firestore에 동기화
+                await syncToFirestore();
+            } else {
+                // 익명 로그인 시도
+                try {
+                    await signInAnonymously(auth);
+                } catch (err) {
+                    console.log('익명 로그인 실패:', err);
+                }
+            }
+        });
+
+        // Firestore에서 주문 가져오기
+        async function syncFromFirestore() {
+            if (!currentUserId) return;
+            try {
+                const ordersRef = collection(db, 'users', currentUserId, 'orders');
+                const snapshot = await getDocs(ordersRef);
+
+                if (!snapshot.empty) {
+                    const firestoreOrders = [];
+                    snapshot.forEach(doc => {
+                        firestoreOrders.push({ id: doc.id, ...doc.data() });
+                    });
+
+                    // Firestore 데이터로 localStorage 업데이트
+                    const localOrders = JSON.parse(localStorage.getItem('bebecook_orders') || '[]');
+                    if (firestoreOrders.length > 0 || localOrders.length === 0) {
+                        localStorage.setItem('bebecook_orders', JSON.stringify(firestoreOrders));
+                        if (window.renderOrders) window.renderOrders();
+                    }
+                }
+            } catch (err) {
+                console.log('Firestore 동기화 오류:', err);
+            }
+        }
+
+        // localStorage 주문을 Firestore에 동기화
+        async function syncToFirestore() {
+            if (!currentUserId) return;
+            try {
+                const localOrders = JSON.parse(localStorage.getItem('bebecook_orders') || '[]');
+                for (const order of localOrders) {
+                    const orderRef = doc(db, 'users', currentUserId, 'orders', String(order.id));
+                    await setDoc(orderRef, {
+                        orderNumber: order.orderNumber,
+                        memo: order.memo || '',
+                        completed: order.completed || false,
+                        createdAt: order.createdAt || serverTimestamp()
+                    }, { merge: true });
+                }
+                console.log('Firestore 동기화 완료');
+            } catch (err) {
+                console.log('Firestore 저장 오류:', err);
+            }
+        }
+        window.syncToFirestore = syncToFirestore;
+
+        // Firestore에 주문 추가
+        window.addOrderToFirestore = async function(order) {
+            if (!currentUserId) return;
+            try {
+                const orderRef = doc(db, 'users', currentUserId, 'orders', String(order.id));
+                await setDoc(orderRef, {
+                    orderNumber: order.orderNumber,
+                    memo: order.memo || '',
+                    completed: order.completed || false,
+                    createdAt: serverTimestamp()
+                });
+                console.log('주문 Firestore 저장 완료');
+            } catch (err) {
+                console.log('주문 저장 오류:', err);
+            }
+        };
+
+        // Firestore에서 주문 삭제
+        window.deleteOrderFromFirestore = async function(orderId) {
+            if (!currentUserId) return;
+            try {
+                const orderRef = doc(db, 'users', currentUserId, 'orders', String(orderId));
+                await deleteDoc(orderRef);
+                console.log('주문 Firestore 삭제 완료');
+            } catch (err) {
+                console.log('주문 삭제 오류:', err);
+            }
+        };
+
+        // Firestore에서 주문 업데이트
+        window.updateOrderInFirestore = async function(order) {
+            if (!currentUserId) return;
+            try {
+                const orderRef = doc(db, 'users', currentUserId, 'orders', String(order.id));
+                await setDoc(orderRef, {
+                    orderNumber: order.orderNumber,
+                    memo: order.memo || '',
+                    completed: order.completed || false
+                }, { merge: true });
+                console.log('주문 Firestore 업데이트 완료');
+            } catch (err) {
+                console.log('주문 업데이트 오류:', err);
+            }
+        };
+
+        // FCM 토큰 가져오기 및 Firestore에 저장
         window.getFCMToken = async function() {
             try {
                 const token = await getToken(messaging, {
@@ -40,6 +160,14 @@
                 if (token) {
                     console.log('FCM Token:', token);
                     localStorage.setItem('fcm_token', token);
+
+                    // Firestore에 FCM 토큰 저장
+                    if (currentUserId) {
+                        const userRef = doc(db, 'users', currentUserId);
+                        await setDoc(userRef, { fcmToken: token }, { merge: true });
+                        console.log('FCM 토큰 Firestore 저장 완료');
+                    }
+
                     return token;
                 } else {
                     console.log('FCM 토큰을 가져올 수 없습니다.');
@@ -746,11 +874,17 @@
             const newOrder = {
                 id: Date.now(),
                 memo: memo,
-                orderNumber: orderNumber
+                orderNumber: orderNumber,
+                completed: false
             };
 
             orders.unshift(newOrder);
             saveOrders(orders);
+
+            // Firestore에 저장
+            if (window.addOrderToFirestore) {
+                window.addOrderToFirestore(newOrder);
+            }
 
             orderInput.value = '';
             memoInput.value = '';
@@ -765,8 +899,15 @@
             if (!editingOrderId) return;
             if (!confirm('이 주문을 삭제하시겠습니까?')) return;
 
+            const deletedId = editingOrderId;
             const orders = getOrders().filter(order => order.id !== editingOrderId);
             saveOrders(orders);
+
+            // Firestore에서 삭제
+            if (window.deleteOrderFromFirestore) {
+                window.deleteOrderFromFirestore(deletedId);
+            }
+
             closeEditModal();
             renderOrders();
             showToast('주문이 삭제되었습니다.');
@@ -781,6 +922,12 @@
             if (index !== -1) {
                 orders[index].completed = !orders[index].completed;
                 saveOrders(orders);
+
+                // Firestore 업데이트
+                if (window.updateOrderInFirestore) {
+                    window.updateOrderInFirestore(orders[index]);
+                }
+
                 updateCompleteButton(orders[index].completed);
                 renderOrders();
                 showToast(orders[index].completed ? '완료 처리되었습니다.' : '완료 취소되었습니다.');
@@ -839,6 +986,12 @@
                 orders[index].orderNumber = orderNumber;
                 orders[index].memo = memo;
                 saveOrders(orders);
+
+                // Firestore 업데이트
+                if (window.updateOrderInFirestore) {
+                    window.updateOrderInFirestore(orders[index]);
+                }
+
                 renderOrders();
                 showToast('수정되었습니다.');
             }
@@ -1030,6 +1183,12 @@
                     showToast('알림이 활성화되었습니다!');
                     document.getElementById('notificationBanner').classList.add('hidden');
                     startNotificationCheck();
+
+                    // FCM 토큰 가져오기 (Firestore에 자동 저장됨)
+                    if (window.getFCMToken) {
+                        await window.getFCMToken();
+                    }
+
                     // 테스트 알림
                     showNotification('알림 설정 완료', '변경기한 알림을 받을 수 있습니다.');
                 } else {
