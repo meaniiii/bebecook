@@ -143,21 +143,17 @@
             min-width: 0;
         }
 
-        .order-recipient {
+        .order-number {
             font-size: 1.1rem;
             font-weight: 700;
             color: #2c3e50;
-            margin-bottom: 6px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            word-break: break-all;
         }
 
-        .order-number {
-            font-size: 0.95rem;
-            color: #4A90A4;
-            font-weight: 600;
-            word-break: break-all;
+        .order-memo {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-top: 6px;
         }
 
         .order-actions {
@@ -300,12 +296,12 @@
 
     <section class="input-form">
         <div class="input-group">
-            <label for="recipientName">수령인 이름</label>
-            <input type="text" id="recipientName" placeholder="예: 홍길동" autocomplete="off">
-        </div>
-        <div class="input-group">
             <label for="orderNumber">주문번호</label>
             <input type="text" id="orderNumber" placeholder="주문번호를 입력하세요" autocomplete="off">
+        </div>
+        <div class="input-group">
+            <label for="memo">메모 (선택)</label>
+            <input type="text" id="memo" placeholder="예: 첫째 이유식, 둘째 간식" autocomplete="off">
         </div>
         <button class="btn-add" onclick="addOrder()">
             <span>➕</span> 주문 추가하기
@@ -339,30 +335,30 @@
 
         // 주문 추가
         function addOrder() {
-            const recipientInput = document.getElementById('recipientName');
             const orderInput = document.getElementById('orderNumber');
+            const memoInput = document.getElementById('memo');
 
-            const recipient = recipientInput.value.trim();
             const orderNumber = orderInput.value.trim();
+            const memo = memoInput.value.trim();
 
-            if (!recipient || !orderNumber) {
-                showToast('수령인 이름과 주문번호를 모두 입력해주세요.');
+            if (!orderNumber) {
+                showToast('주문번호를 입력해주세요.');
                 return;
             }
 
             const orders = getOrders();
             const newOrder = {
                 id: Date.now(),
-                recipient: recipient,
+                memo: memo,
                 orderNumber: orderNumber
             };
 
             orders.unshift(newOrder);
             saveOrders(orders);
 
-            recipientInput.value = '';
             orderInput.value = '';
-            recipientInput.focus();
+            memoInput.value = '';
+            orderInput.focus();
 
             renderOrders();
             showToast('주문이 추가되었습니다!');
@@ -379,7 +375,7 @@
         }
 
         // 조회하기 (클립보드 복사 + 새 탭 열기)
-        async function lookupOrder(recipient, orderNumber) {
+        async function lookupOrder(orderNumber) {
             try {
                 await navigator.clipboard.writeText(orderNumber);
             } catch (err) {
@@ -421,11 +417,11 @@
             orderList.innerHTML = orders.map(order => `
                 <div class="order-card">
                     <div class="order-info">
-                        <div class="order-recipient">👤 ${escapeHtml(order.recipient)}</div>
                         <div class="order-number">📝 ${escapeHtml(order.orderNumber)}</div>
+                        ${order.memo ? `<div class="order-memo">💬 ${escapeHtml(order.memo)}</div>` : ''}
                     </div>
                     <div class="order-actions">
-                        <button class="btn-lookup" onclick="lookupOrder('${escapeHtml(order.recipient)}', '${escapeHtml(order.orderNumber)}')">
+                        <button class="btn-lookup" onclick="lookupOrder('${escapeHtml(order.orderNumber)}')">
                             조회하기
                         </button>
                         <button class="btn-delete" onclick="deleteOrder(${order.id})">
@@ -455,13 +451,13 @@
         }
 
         // Enter 키로 추가
-        document.getElementById('recipientName').addEventListener('keypress', (e) => {
+        document.getElementById('orderNumber').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                document.getElementById('orderNumber').focus();
+                document.getElementById('memo').focus();
             }
         });
 
-        document.getElementById('orderNumber').addEventListener('keypress', (e) => {
+        document.getElementById('memo').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 addOrder();
             }
