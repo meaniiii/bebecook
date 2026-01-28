@@ -382,7 +382,7 @@
         async function lookupOrder(orderNumber) {
             try {
                 await navigator.clipboard.writeText(orderNumber);
-                window.open('https://www.bebecook.com/page/guest/order/schedule', '_blank');
+                window.open('https://www.bebecook.com/page/guest/order/signin', '_blank');
                 showToast('주문번호가 복사되었습니다.\n로그인 창에 붙여넣으세요.');
             } catch (err) {
                 // 클립보드 API 실패 시 대체 방법
@@ -395,7 +395,7 @@
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
 
-                window.open('https://www.bebecook.com/page/guest/order/schedule', '_blank');
+                window.open('https://www.bebecook.com/page/guest/order/signin', '_blank');
                 showToast('주문번호가 복사되었습니다.\n로그인 창에 붙여넣으세요.');
             }
         }
