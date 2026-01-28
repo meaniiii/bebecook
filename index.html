@@ -366,6 +366,32 @@
             vertical-align: middle;
         }
 
+        /* 현재 시간 */
+        .current-time {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .time-display {
+            display: inline-block;
+            background: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .time-display .date {
+            color: #4A90A4;
+        }
+
+        .time-display .time {
+            color: #e74c3c;
+            margin-left: 8px;
+        }
+
         /* 빈 상태 */
         .empty-state {
             text-align: center;
@@ -473,6 +499,10 @@
         <button class="btn-add" onclick="addOrder()">
             <span>➕</span> 주문 추가하기
         </button>
+    </section>
+
+    <section class="current-time">
+        <div class="time-display" id="currentTime"></div>
     </section>
 
     <section class="order-section">
@@ -803,6 +833,28 @@
                     .catch(err => console.log('서비스 워커 등록 실패:', err));
             });
         }
+
+        // 현재 시간 업데이트
+        function updateCurrentTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+            const weekday = weekdays[now.getDay()];
+
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+            document.getElementById('currentTime').innerHTML =
+                `<span class="date">${year}.${month}.${day} (${weekday})</span>` +
+                `<span class="time">${hours}:${minutes}:${seconds}</span>`;
+        }
+
+        // 1초마다 시간 업데이트
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
 
         // 초기 렌더링
         renderOrders();
