@@ -143,15 +143,22 @@
             min-width: 0;
         }
 
+        .order-date {
+            font-size: 0.85rem;
+            color: #4A90A4;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
         .order-number {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 700;
             color: #2c3e50;
             word-break: break-all;
         }
 
         .order-memo {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #7f8c8d;
             margin-top: 6px;
         }
@@ -297,7 +304,7 @@
     <section class="input-form">
         <div class="input-group">
             <label for="orderNumber">주문번호</label>
-            <input type="text" id="orderNumber" placeholder="주문번호를 입력하세요" autocomplete="off">
+            <input type="text" id="orderNumber" placeholder="숫자 16자리" autocomplete="off" inputmode="numeric" maxlength="16" pattern="[0-9]{16}">
         </div>
         <div class="input-group">
             <label for="memo">메모 (선택)</label>
@@ -333,16 +340,31 @@
             localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
         }
 
+        // 주문번호에서 주문일자 추출 (앞 8자리 -> YYYY.MM.DD)
+        function parseOrderDate(orderNumber) {
+            if (orderNumber.length < 8) return '';
+            const dateStr = orderNumber.substring(0, 8);
+            const year = dateStr.substring(0, 4);
+            const month = dateStr.substring(4, 6);
+            const day = dateStr.substring(6, 8);
+            return `${year}.${month}.${day}`;
+        }
+
         // 주문 추가
         function addOrder() {
             const orderInput = document.getElementById('orderNumber');
             const memoInput = document.getElementById('memo');
 
-            const orderNumber = orderInput.value.trim();
+            const orderNumber = orderInput.value.trim().replace(/[^0-9]/g, '');
             const memo = memoInput.value.trim();
 
             if (!orderNumber) {
                 showToast('주문번호를 입력해주세요.');
+                return;
+            }
+
+            if (orderNumber.length !== 16) {
+                showToast('주문번호는 숫자 16자리입니다.');
                 return;
             }
 
@@ -417,6 +439,7 @@
             orderList.innerHTML = orders.map(order => `
                 <div class="order-card">
                     <div class="order-info">
+                        <div class="order-date">📅 ${parseOrderDate(order.orderNumber)} 주문</div>
                         <div class="order-number">📝 ${escapeHtml(order.orderNumber)}</div>
                         ${order.memo ? `<div class="order-memo">💬 ${escapeHtml(order.memo)}</div>` : ''}
                     </div>
@@ -449,6 +472,11 @@
                 toast.classList.remove('show');
             }, 3000);
         }
+
+        // 주문번호 숫자만 입력
+        document.getElementById('orderNumber').addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+        });
 
         // Enter 키로 추가
         document.getElementById('orderNumber').addEventListener('keypress', (e) => {
