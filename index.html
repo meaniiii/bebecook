@@ -548,7 +548,7 @@
             const m = String(orderDate.getMonth() + 1).padStart(2, '0');
             const d = String(orderDate.getDate()).padStart(2, '0');
 
-            return `${y}.${m}.${d} 오전 8시`;
+            return `${y}.${m}.${d} 오전 6시`;
         }
 
         // 기한 지났는지 확인
@@ -559,7 +559,7 @@
             const month = parseInt(dateStr.substring(4, 6)) - 1;
             const day = parseInt(dateStr.substring(6, 8));
 
-            const deadline = new Date(year, month, day + 2, 8, 0, 0);
+            const deadline = new Date(year, month, day + 2, 6, 0, 0);
             return new Date() > deadline;
         }
 
