@@ -378,26 +378,20 @@
             showToast('주문이 삭제되었습니다.');
         }
 
-        // 조회하기 (클립보드 복사 + 새 탭 열기)
-        async function lookupOrder(orderNumber) {
-            try {
-                await navigator.clipboard.writeText(orderNumber);
-                window.open('https://www.bebecook.com/page/guest/order/signin', '_blank');
-                showToast('주문번호가 복사되었습니다.\n로그인 창에 붙여넣으세요.');
-            } catch (err) {
-                // 클립보드 API 실패 시 대체 방법
-                const textArea = document.createElement('textarea');
-                textArea.value = orderNumber;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-9999px';
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
+        // 조회하기 (URL 파라미터로 전달 + 새 탭 열기)
+        async function lookupOrder(recipient, orderNumber) {
+            // URL 쿼리 파라미터로 수령인명과 주문번호 전달 시도
+            const baseUrl = 'https://www.bebecook.com/page/guest/order/signin';
+            const params = new URLSearchParams({
+                name: recipient,
+                orderNo: orderNumber,
+                receiverName: recipient,
+                orderNumber: orderNumber
+            });
+            const urlWithParams = `${baseUrl}?${params.toString()}`;
 
-                window.open('https://www.bebecook.com/page/guest/order/signin', '_blank');
-                showToast('주문번호가 복사되었습니다.\n로그인 창에 붙여넣으세요.');
-            }
+            window.open(urlWithParams, '_blank');
+            showToast(`수령인: ${recipient}\n주문번호: ${orderNumber}\n\n자동 입력이 안 되면 직접 입력해주세요.`);
         }
 
         // 주문 목록 렌더링
@@ -428,7 +422,7 @@
                         <div class="order-number">📝 ${escapeHtml(order.orderNumber)}</div>
                     </div>
                     <div class="order-actions">
-                        <button class="btn-lookup" onclick="lookupOrder('${escapeHtml(order.orderNumber)}')">
+                        <button class="btn-lookup" onclick="lookupOrder('${escapeHtml(order.recipient)}', '${escapeHtml(order.orderNumber)}')">
                             조회하기
                         </button>
                         <button class="btn-delete" onclick="deleteOrder(${order.id})">
