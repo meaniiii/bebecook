@@ -150,6 +150,17 @@
             margin-bottom: 4px;
         }
 
+        .order-deadline {
+            font-size: 0.8rem;
+            color: #f59e0b;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .order-deadline.passed {
+            color: #dc2626;
+        }
+
         .order-number {
             font-size: 1rem;
             font-weight: 700;
@@ -522,6 +533,36 @@
             return `${year}.${month}.${day}`;
         }
 
+        // 최초 변경 기한 계산 (주문일자 + 2일 오전 8시)
+        function getDeadline(orderNumber) {
+            if (orderNumber.length < 8) return '';
+            const dateStr = orderNumber.substring(0, 8);
+            const year = parseInt(dateStr.substring(0, 4));
+            const month = parseInt(dateStr.substring(4, 6)) - 1;
+            const day = parseInt(dateStr.substring(6, 8));
+
+            const orderDate = new Date(year, month, day);
+            orderDate.setDate(orderDate.getDate() + 2);
+
+            const y = orderDate.getFullYear();
+            const m = String(orderDate.getMonth() + 1).padStart(2, '0');
+            const d = String(orderDate.getDate()).padStart(2, '0');
+
+            return `${y}.${m}.${d} 오전 8시`;
+        }
+
+        // 기한 지났는지 확인
+        function isDeadlinePassed(orderNumber) {
+            if (orderNumber.length < 8) return false;
+            const dateStr = orderNumber.substring(0, 8);
+            const year = parseInt(dateStr.substring(0, 4));
+            const month = parseInt(dateStr.substring(4, 6)) - 1;
+            const day = parseInt(dateStr.substring(6, 8));
+
+            const deadline = new Date(year, month, day + 2, 8, 0, 0);
+            return new Date() > deadline;
+        }
+
         // 주문 추가
         function addOrder() {
             const orderInput = document.getElementById('orderNumber');
@@ -700,6 +741,9 @@
                 <div class="order-card ${order.completed ? 'completed' : ''}">
                     <div class="order-info">
                         <div class="order-date">📅 ${parseOrderDate(order.orderNumber)} 주문 ${order.completed ? '<span class="completed-badge">완료</span>' : ''}</div>
+                        <div class="order-deadline ${isDeadlinePassed(order.orderNumber) ? 'passed' : ''}">
+                            ⏰ 변경기한: ${getDeadline(order.orderNumber)}까지
+                        </div>
                         <div class="order-number">📝 ${escapeHtml(order.orderNumber)}</div>
                         ${order.memo ? `<div class="order-memo">💬 ${escapeHtml(order.memo)}</div>` : ''}
                     </div>
