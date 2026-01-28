@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4A90A4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="주문관리">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%234A90A4' width='100' height='100' rx='20'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white'>📦</text></svg>">
+    <title>주문 관리 대시보드</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            min-height: 100vh;
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding: 20px 0;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: #2c3e50;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+
+        /* 입력 폼 */
+        .input-form {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #5a6c7d;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e8ecef;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        .input-group input:focus {
+            border-color: #4A90A4;
+            box-shadow: 0 0 0 3px rgba(74, 144, 164, 0.15);
+        }
+
+        .input-group input::placeholder {
+            color: #b8c2cc;
+        }
+
+        .btn-add {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #4A90A4 0%, #357a8c 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            min-height: 54px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-add:active {
+            transform: scale(0.98);
+        }
+
+        /* 주문 리스트 */
+        .order-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .order-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .order-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .order-recipient {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .order-number {
+            font-size: 0.95rem;
+            color: #4A90A4;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .order-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .btn-lookup {
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            min-height: 50px;
+            min-width: 90px;
+            transition: transform 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-lookup:active {
+            transform: scale(0.95);
+        }
+
+        .btn-delete {
+            padding: 10px;
+            background: #fee2e2;
+            color: #dc2626;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            min-height: 50px;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .btn-delete:active {
+            transform: scale(0.95);
+            background: #fecaca;
+        }
+
+        /* 빈 상태 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #95a5a6;
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        /* Toast 알림 */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(44, 62, 80, 0.95);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            z-index: 1000;
+            max-width: calc(100% - 32px);
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* 리스트 카운트 */
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 0 4px;
+        }
+
+        .list-header h2 {
+            font-size: 1rem;
+            color: #5a6c7d;
+            font-weight: 600;
+        }
+
+        .list-count {
+            background: #4A90A4;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* 반응형 */
+        @media (max-width: 380px) {
+            .order-card {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .order-actions {
+                flex-direction: row;
+            }
+
+            .btn-lookup {
+                flex: 1;
+            }
+
+            .btn-delete {
+                min-width: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>📦 주문 관리 대시보드</h1>
+        <p>베베쿡 주문 조회를 간편하게</p>
+    </header>
+
+    <section class="input-form">
+        <div class="input-group">
+            <label for="recipientName">수령인 이름</label>
+            <input type="text" id="recipientName" placeholder="예: 홍길동" autocomplete="off">
+        </div>
+        <div class="input-group">
+            <label for="orderNumber">주문번호</label>
+            <input type="text" id="orderNumber" placeholder="주문번호를 입력하세요" autocomplete="off">
+        </div>
+        <button class="btn-add" onclick="addOrder()">
+            <span>➕</span> 주문 추가하기
+        </button>
+    </section>
+
+    <section class="order-section">
+        <div class="list-header" id="listHeader" style="display: none;">
+            <h2>저장된 주문 목록</h2>
+            <span class="list-count" id="listCount">0</span>
+        </div>
+        <div class="order-list" id="orderList"></div>
+    </section>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // localStorage 키
+        const STORAGE_KEY = 'bebecook_orders';
+
+        // 주문 목록 가져오기
+        function getOrders() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        // 주문 목록 저장하기
+        function saveOrders(orders) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+        }
+
+        // 주문 추가
+        function addOrder() {
+            const recipientInput = document.getElementById('recipientName');
+            const orderInput = document.getElementById('orderNumber');
+
+            const recipient = recipientInput.value.trim();
+            const orderNumber = orderInput.value.trim();
+
+            if (!recipient || !orderNumber) {
+                showToast('수령인 이름과 주문번호를 모두 입력해주세요.');
+                return;
+            }
+
+            const orders = getOrders();
+            const newOrder = {
+                id: Date.now(),
+                recipient: recipient,
+                orderNumber: orderNumber
+            };
+
+            orders.unshift(newOrder);
+            saveOrders(orders);
+
+            recipientInput.value = '';
+            orderInput.value = '';
+            recipientInput.focus();
+
+            renderOrders();
+            showToast('주문이 추가되었습니다!');
+        }
+
+        // 주문 삭제
+        function deleteOrder(id) {
+            if (!confirm('이 주문을 삭제하시겠습니까?')) return;
+
+            const orders = getOrders().filter(order => order.id !== id);
+            saveOrders(orders);
+            renderOrders();
+            showToast('주문이 삭제되었습니다.');
+        }
+
+        // 조회하기 (클립보드 복사 + 새 탭 열기)
+        async function lookupOrder(orderNumber) {
+            try {
+                await navigator.clipboard.writeText(orderNumber);
+                window.open('https://www.bebecook.com/page/guest/order/schedule', '_blank');
+                showToast('주문번호가 복사되었습니다.\n로그인 창에 붙여넣으세요.');
+            } catch (err) {
+                // 클립보드 API 실패 시 대체 방법
+                const textArea = document.createElement('textarea');
+                textArea.value = orderNumber;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                window.open('https://www.bebecook.com/page/guest/order/schedule', '_blank');
+                showToast('주문번호가 복사되었습니다.\n로그인 창에 붙여넣으세요.');
+            }
+        }
+
+        // 주문 목록 렌더링
+        function renderOrders() {
+            const orders = getOrders();
+            const orderList = document.getElementById('orderList');
+            const listHeader = document.getElementById('listHeader');
+            const listCount = document.getElementById('listCount');
+
+            if (orders.length === 0) {
+                listHeader.style.display = 'none';
+                orderList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📋</div>
+                        <p>등록된 주문이 없습니다.<br>위 폼에서 주문을 추가해주세요.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listHeader.style.display = 'flex';
+            listCount.textContent = orders.length;
+
+            orderList.innerHTML = orders.map(order => `
+                <div class="order-card">
+                    <div class="order-info">
+                        <div class="order-recipient">👤 ${escapeHtml(order.recipient)}</div>
+                        <div class="order-number">📝 ${escapeHtml(order.orderNumber)}</div>
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn-lookup" onclick="lookupOrder('${escapeHtml(order.orderNumber)}')">
+                            조회하기
+                        </button>
+                        <button class="btn-delete" onclick="deleteOrder(${order.id})">
+                            삭제
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // HTML 이스케이프 (XSS 방지)
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Toast 알림 표시
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Enter 키로 추가
+        document.getElementById('recipientName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('orderNumber').focus();
+            }
+        });
+
+        document.getElementById('orderNumber').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addOrder();
+            }
+        });
+
+        // 서비스 워커 등록
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('서비스 워커 등록 성공:', reg.scope))
+                    .catch(err => console.log('서비스 워커 등록 실패:', err));
+            });
+        }
+
+        // 초기 렌더링
+        renderOrders();
+    </script>
+</body>
+</html>
