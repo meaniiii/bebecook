@@ -380,14 +380,11 @@
 
         // 조회하기 (클립보드 복사 + 새 탭 열기)
         async function lookupOrder(recipient, orderNumber) {
-            const copyText = `${recipient}\n${orderNumber}`;
-
             try {
-                await navigator.clipboard.writeText(copyText);
+                await navigator.clipboard.writeText(orderNumber);
             } catch (err) {
-                // 클립보드 API 실패 시 대체 방법
                 const textArea = document.createElement('textarea');
-                textArea.value = copyText;
+                textArea.value = orderNumber;
                 textArea.style.position = 'fixed';
                 textArea.style.left = '-9999px';
                 document.body.appendChild(textArea);
@@ -397,7 +394,7 @@
             }
 
             window.open('https://www.bebecook.com/page/guest/order/signin', '_blank');
-            showToast(`복사됨!\n수령인: ${recipient}\n주문번호: ${orderNumber}\n\n각 필드에 붙여넣기 하세요.`);
+            showToast('주문번호가 복사되었습니다.\n로그인 창에 붙여넣으세요.');
         }
 
         // 주문 목록 렌더링
