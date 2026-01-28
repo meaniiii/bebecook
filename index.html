@@ -460,6 +460,68 @@
             font-weight: 600;
         }
 
+        /* 알림 권한 버튼 */
+        .notification-banner {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .notification-banner.hidden {
+            display: none;
+        }
+
+        .notification-banner .icon {
+            font-size: 1.5rem;
+        }
+
+        .notification-banner .text {
+            flex: 1;
+            font-size: 0.9rem;
+            color: #92400e;
+            line-height: 1.4;
+        }
+
+        .btn-notification {
+            padding: 10px 16px;
+            background: #FF8A5B;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .btn-notification:active {
+            transform: scale(0.95);
+        }
+
+        .notification-status {
+            text-align: center;
+            padding: 8px 16px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .notification-status.enabled {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .notification-status.disabled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
         /* 반응형 */
         @media (max-width: 380px) {
             .order-card {
@@ -500,6 +562,13 @@
             <span>➕</span> 주문 추가하기
         </button>
     </section>
+
+    <!-- 알림 권한 요청 배너 -->
+    <div class="notification-banner" id="notificationBanner">
+        <span class="icon">🔔</span>
+        <span class="text">변경기한 알림을 받으시겠습니까?</span>
+        <button class="btn-notification" onclick="requestNotificationPermission()">알림 허용</button>
+    </div>
 
     <section class="current-time">
         <div class="time-display" id="currentTime"></div>
@@ -855,6 +924,187 @@
         // 1초마다 시간 업데이트
         updateCurrentTime();
         setInterval(updateCurrentTime, 1000);
+
+        // ==================== 알림 기능 ====================
+        const NOTIFICATION_KEY = 'bebecook_notifications';
+
+        // 알림 권한 상태 확인 및 배너 표시
+        function checkNotificationStatus() {
+            const banner = document.getElementById('notificationBanner');
+
+            if (!('Notification' in window)) {
+                banner.classList.add('hidden');
+                return;
+            }
+
+            if (Notification.permission === 'granted') {
+                banner.classList.add('hidden');
+                startNotificationCheck();
+            } else if (Notification.permission === 'denied') {
+                banner.classList.add('hidden');
+            } else {
+                banner.classList.remove('hidden');
+            }
+        }
+
+        // 알림 권한 요청
+        async function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                showToast('이 브라우저는 알림을 지원하지 않습니다.');
+                return;
+            }
+
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    showToast('알림이 활성화되었습니다!');
+                    document.getElementById('notificationBanner').classList.add('hidden');
+                    startNotificationCheck();
+                    // 테스트 알림
+                    showNotification('알림 설정 완료', '변경기한 알림을 받을 수 있습니다.');
+                } else {
+                    showToast('알림 권한이 거부되었습니다.');
+                }
+            } catch (err) {
+                showToast('알림 권한 요청 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 알림 표시
+        function showNotification(title, body, tag) {
+            if (Notification.permission !== 'granted') return;
+
+            const options = {
+                body: body,
+                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23FF8A5B" width="100" height="100" rx="20"/><text x="50" y="65" font-size="50" text-anchor="middle" fill="white">📦</text></svg>',
+                badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23FF8A5B" width="100" height="100" rx="20"/><text x="50" y="65" font-size="50" text-anchor="middle" fill="white">📦</text></svg>',
+                tag: tag || 'bebecook-notification',
+                requireInteraction: true
+            };
+
+            try {
+                const notification = new Notification(title, options);
+                notification.onclick = () => {
+                    window.focus();
+                    notification.close();
+                };
+            } catch (err) {
+                console.log('알림 표시 오류:', err);
+            }
+        }
+
+        // 이미 보낸 알림 기록 가져오기
+        function getSentNotifications() {
+            const data = localStorage.getItem(NOTIFICATION_KEY);
+            return data ? JSON.parse(data) : {};
+        }
+
+        // 알림 기록 저장
+        function saveSentNotification(orderId, type) {
+            const sent = getSentNotifications();
+            if (!sent[orderId]) {
+                sent[orderId] = {};
+            }
+            sent[orderId][type] = Date.now();
+            localStorage.setItem(NOTIFICATION_KEY, JSON.stringify(sent));
+        }
+
+        // 알림을 이미 보냈는지 확인
+        function isNotificationSent(orderId, type) {
+            const sent = getSentNotifications();
+            return sent[orderId] && sent[orderId][type];
+        }
+
+        // 주문별 기한 체크 및 알림
+        function checkDeadlinesAndNotify() {
+            if (Notification.permission !== 'granted') return;
+
+            const orders = getOrders();
+            const now = new Date();
+
+            orders.forEach(order => {
+                if (order.completed) return; // 완료된 주문은 무시
+
+                const orderNumber = order.orderNumber;
+                if (orderNumber.length < 8) return;
+
+                const dateStr = orderNumber.substring(0, 8);
+                const year = parseInt(dateStr.substring(0, 4));
+                const month = parseInt(dateStr.substring(4, 6)) - 1;
+                const day = parseInt(dateStr.substring(6, 8));
+
+                const deadline = new Date(year, month, day + 2, 6, 0, 0);
+                const timeDiff = deadline - now;
+                const hoursUntilDeadline = timeDiff / (1000 * 60 * 60);
+
+                const orderLabel = order.memo || orderNumber.substring(8);
+
+                // 1시간 전 알림
+                if (hoursUntilDeadline > 0 && hoursUntilDeadline <= 1) {
+                    if (!isNotificationSent(order.id, '1hour')) {
+                        showNotification(
+                            '⏰ 변경기한 1시간 전',
+                            `주문 ${orderLabel}의 변경기한이 1시간 남았습니다!`,
+                            `deadline-1hour-${order.id}`
+                        );
+                        saveSentNotification(order.id, '1hour');
+                    }
+                }
+
+                // 3시간 전 알림
+                if (hoursUntilDeadline > 1 && hoursUntilDeadline <= 3) {
+                    if (!isNotificationSent(order.id, '3hours')) {
+                        showNotification(
+                            '⏰ 변경기한 3시간 전',
+                            `주문 ${orderLabel}의 변경기한이 3시간 남았습니다.`,
+                            `deadline-3hours-${order.id}`
+                        );
+                        saveSentNotification(order.id, '3hours');
+                    }
+                }
+
+                // 당일 아침 알림 (기한 당일 오전 7시에 알림)
+                const deadlineDay = new Date(year, month, day + 2, 7, 0, 0);
+                const isDeadlineDay = now >= deadlineDay && now < deadline;
+                if (isDeadlineDay) {
+                    if (!isNotificationSent(order.id, 'morning')) {
+                        showNotification(
+                            '📅 오늘이 변경기한입니다',
+                            `주문 ${orderLabel}을 오전 6시까지 확인하세요!`,
+                            `deadline-morning-${order.id}`
+                        );
+                        saveSentNotification(order.id, 'morning');
+                    }
+                }
+
+                // 기한 지남 알림
+                if (timeDiff < 0) {
+                    if (!isNotificationSent(order.id, 'passed')) {
+                        showNotification(
+                            '🚨 변경기한 지남',
+                            `주문 ${orderLabel}의 변경기한이 지났습니다.`,
+                            `deadline-passed-${order.id}`
+                        );
+                        saveSentNotification(order.id, 'passed');
+                    }
+                }
+            });
+        }
+
+        // 알림 체크 시작 (1분마다)
+        let notificationInterval = null;
+        function startNotificationCheck() {
+            if (notificationInterval) return;
+
+            // 즉시 한 번 체크
+            checkDeadlinesAndNotify();
+
+            // 1분마다 체크
+            notificationInterval = setInterval(checkDeadlinesAndNotify, 60000);
+        }
+
+        // 페이지 로드 시 알림 상태 확인
+        checkNotificationStatus();
 
         // 초기 렌더링
         renderOrders();
